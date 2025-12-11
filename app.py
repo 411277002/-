@@ -1,13 +1,27 @@
 import streamlit as st
 import pandas as pd
-from pipeline import analyze_file
 import shap
 import chardet
 import io
+
+from pipeline_cn import analyze_cn
+from pipeline_math import analyze_math
+
 st.title("行為分析測試")
 
 
 def read_csv_safely(uploaded_file):
+    filename = uploaded_file.name.lower()
+
+    # ---------- Excel ----------
+    if filename.endswith(".xlsx") or filename.endswith(".xls"):
+        try:
+            df = pd.read_excel(uploaded_file)
+            return df
+        except Exception as e:
+            st.error(f"Excel 讀取錯誤：{e}")
+            return None
+    
     raw_data = uploaded_file.read()
 
     detect_result = chardet.detect(raw_data)
@@ -38,14 +52,28 @@ CLUSTER_NAME_MAP = {
 }
 
 
-uploaded_file = st.file_uploader("請上傳 CSV 檔", type=["csv"])
+subject = st.selectbox(
+    "請選擇科目",
+    ["請選擇", "國語文", "數學"]
+)
+
+if subject == "請選擇":
+    st.stop()
+
+
+uploaded_file = st.file_uploader("請上傳檔案", type=["csv", "xlsx", "xls"])
 
 if uploaded_file:
     df = read_csv_safely(uploaded_file)
     st.dataframe(df)
 
     if st.button("開始分析"):
-        normal_group_dfs, outlier_df = analyze_file(df)
+        if subject == "國語文":
+            normal_group_dfs, outlier_df = analyze_cn(df)
+
+        elif subject == "數學":
+            normal_group_dfs, outlier_df = analyze_math(df)
+        
         st.success("分析完成！")
     
 

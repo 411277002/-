@@ -50,7 +50,7 @@ CLUSTER_NAME_MAP = {
 }
 
     
-def analyze_file(df):
+def analyze_cn(df):
     """
     df: DataFrame (多筆學生資料)
     回傳：df_result, detail_list
