@@ -1,29 +1,48 @@
 import joblib
 import pandas as pd
+import numpy as np
+import shap
 
-stage1_scaler = joblib.load("models/math_scaler_stage1.pkl")
-stage2_scaler = joblib.load("models/math_scaler_stage2.pkl")
-stage1 = joblib.load("models/math_model_stage1.pkl")
-stage2 = joblib.load("models/math_model_stage2.pkl")
-explainer = joblib.load("models/importance_stage1.pkl")
+scaler_stage1 = joblib.load("models/math_models/scaler_stage1.pkl")
+model_stage1 = joblib.load("models/math_models/model_stage1.pkl")
+scaler_stage2 = joblib.load("models/math_models/scaler_stage2.pkl")
+model_stage2 = joblib.load("models/math_models/model_stage2.pkl")
+cluster_centers = joblib.load("models/math_models/cluster_centers.pkl")
+explainer_stage1 = shap.TreeExplainer(model_stage1)
+explainer_stage2 = shap.TreeExplainer(model_stage2)
 
-FEATURES = [
+STAGE1_FEATURES_ALL = [
     'Total_View_Duration', 'Avg_Finish_Rate', 'Full_Completion_Count',
     'Total_Prac_Attempts', 'Total_Interaction_Count', 'Active_Days',
     'Review_Ratio', 'Completion_View_Efficiency', 'View_Efficiency',
     'Prac_Efficiency', 'Composite_Engagement_Index', 'Avg_Daily_View_Time',
     'Avg_Daily_Prac', 'Avg_Daily_Interaction', 'Total_Notes', 'Total_Chkpts',
-    'Total_Continue', 'Rewind_Ratio',
-    'Forward_Ratio', 'SpeedChange_Ratio', 'PostReview_Ratio', 'Note_Ratio',
-    'Chkpt_Ratio', 'Continue_Ratio', 'Revisit_Intensity',
-    'Total_Adjustment_Ratio', 'Focus_Play_Active', 'Focus_Pause_Control',
-    'Focus_Speed_Adjust', 'Focus_Seek', 'Focus_Review_Checkpoints',
-    'Focus_Continue', 'Focus_Notes', 'Focus_Browse_UI', 'Focus_Questions',
-    'Speed_Correctness_Index', 'Median_Exam_Ans_Time', 'Total_Correct',
-    'Avg_Prac_Score_Rate', 'Avg_Prac_Efficiency',
-    'Prac_Score_StdDev', 'Avg_Exam_Correctness', 'Exam_Efficiency',
-    'Total_Exam_Count', 'Prac_Improvement', 'Practice_Exam_Consistency',
-    'Avg_Item_Error_Rate', 'Error_Streak_Max'
+    'Total_Continue', 'Rewind_Ratio', 'Forward_Ratio', 'SpeedChange_Ratio',
+    'PostReview_Ratio', 'Note_Ratio', 'Chkpt_Ratio', 'Continue_Ratio',
+    'Revisit_Intensity', 'Total_Adjustment_Ratio', 'Focus_Play_Active',
+    'Focus_Pause_Control', 'Focus_Speed_Adjust', 'Focus_Seek',
+    'Focus_Review_Checkpoints', 'Focus_Continue', 'Focus_Notes',
+    'Focus_Browse_UI', 'Focus_Questions', 'Speed_Correctness_Index',
+    'Median_Exam_Ans_Time', 'Total_Correct', 'Avg_Prac_Score_Rate',
+    'Avg_Prac_Efficiency', 'Prac_Score_StdDev', 'Avg_Exam_Correctness',
+    'Exam_Efficiency', 'Total_Exam_Count', 'Prac_Improvement',
+    'Practice_Exam_Consistency', 'Avg_Item_Error_Rate', 'Error_Streak_Max'
+] + [c + "_missing" for c in [
+    'Total_View_Duration', 'Avg_Finish_Rate', 'Full_Completion_Count',
+    'Total_Prac_Attempts', 'Total_Interaction_Count', 'Active_Days',
+    'Review_Ratio', 'Completion_View_Efficiency', 'View_Efficiency',
+    'Prac_Efficiency', 'Composite_Engagement_Index', 'Avg_Daily_View_Time',
+    'Avg_Daily_Prac', 'Avg_Daily_Interaction', 'Total_Notes', 'Total_Chkpts',
+    'Total_Continue', 'Rewind_Ratio', 'Forward_Ratio', 'SpeedChange_Ratio',
+    'PostReview_Ratio', 'Note_Ratio', 'Chkpt_Ratio', 'Continue_Ratio',
+    'Revisit_Intensity', 'Total_Adjustment_Ratio', 'Focus_Play_Active',
+    'Focus_Pause_Control', 'Focus_Speed_Adjust', 'Focus_Seek',
+    'Focus_Review_Checkpoints', 'Focus_Continue', 'Focus_Notes',
+    'Focus_Browse_UI', 'Focus_Questions', 'Speed_Correctness_Index',
+    'Median_Exam_Ans_Time', 'Total_Correct', 'Avg_Prac_Score_Rate',
+    'Avg_Prac_Efficiency', 'Prac_Score_StdDev', 'Avg_Exam_Correctness',
+    'Exam_Efficiency', 'Total_Exam_Count', 'Prac_Improvement',
+    'Practice_Exam_Consistency', 'Avg_Item_Error_Rate', 'Error_Streak_Max']
 ]
 
 FEATURE_NAME_MAP = {
@@ -77,56 +96,122 @@ FEATURE_NAME_MAP = {
     'Error_Streak_Max': '連錯最大次數'
 }
 
+
+
+STAGE2_FEATURES_ALL = [
+    'Total_View_Duration', 'Avg_Finish_Rate', 'Full_Completion_Count',
+    'Total_Prac_Attempts', 'Total_Interaction_Count', 'Active_Days',
+    'Review_Ratio', 'Completion_View_Efficiency', 'View_Efficiency',
+    'Prac_Efficiency', 'Composite_Engagement_Index', 'Avg_Daily_View_Time',
+    'Avg_Daily_Prac', 'Avg_Daily_Interaction', 'Total_Notes', 'Total_Chkpts',
+    'Total_Continue', 'Rewind_Ratio', 'Forward_Ratio', 'SpeedChange_Ratio',
+    'PostReview_Ratio', 'Note_Ratio', 'Chkpt_Ratio', 'Continue_Ratio',
+    'Revisit_Intensity', 'Total_Adjustment_Ratio', 'Focus_Play_Active',
+    'Focus_Pause_Control', 'Focus_Speed_Adjust', 'Focus_Seek',
+    'Focus_Review_Checkpoints', 'Focus_Continue', 'Focus_Notes',
+    'Focus_Browse_UI', 'Focus_Questions', 'Speed_Correctness_Index',
+    'Median_Exam_Ans_Time', 'Total_Correct', 'Avg_Prac_Score_Rate',
+    'Avg_Prac_Efficiency', 'Prac_Score_StdDev', 'Avg_Exam_Correctness',
+    'Exam_Efficiency', 'Total_Exam_Count', 'Prac_Improvement',
+    'Practice_Exam_Consistency', 'Avg_Item_Error_Rate', 'Error_Streak_Max'
+] + [c + "_missing" for c in [
+    'Total_View_Duration', 'Avg_Finish_Rate', 'Full_Completion_Count',
+    'Total_Prac_Attempts', 'Total_Interaction_Count', 'Active_Days',
+    'Review_Ratio', 'Completion_View_Efficiency', 'View_Efficiency',
+    'Prac_Efficiency', 'Composite_Engagement_Index', 'Avg_Daily_View_Time',
+    'Avg_Daily_Prac', 'Avg_Daily_Interaction', 'Total_Notes', 'Total_Chkpts',
+    'Total_Continue', 'Rewind_Ratio', 'Forward_Ratio', 'SpeedChange_Ratio',
+    'PostReview_Ratio', 'Note_Ratio', 'Chkpt_Ratio', 'Continue_Ratio',
+    'Revisit_Intensity', 'Total_Adjustment_Ratio', 'Focus_Play_Active',
+    'Focus_Pause_Control', 'Focus_Speed_Adjust', 'Focus_Seek',
+    'Focus_Review_Checkpoints', 'Focus_Continue', 'Focus_Notes',
+    'Focus_Browse_UI', 'Focus_Questions', 'Speed_Correctness_Index',
+    'Median_Exam_Ans_Time', 'Total_Correct', 'Avg_Prac_Score_Rate',
+    'Avg_Prac_Efficiency', 'Prac_Score_StdDev', 'Avg_Exam_Correctness',
+    'Exam_Efficiency', 'Total_Exam_Count', 'Prac_Improvement',
+    'Practice_Exam_Consistency', 'Avg_Item_Error_Rate', 'Error_Streak_Max']
+]
+
 CLUSTER_NAME_MAP = {
-    0: "穩定型",
-    1: "待觀察型",
-    2: "努力型"
+    0: "高投入策略型",
+    1: "低投入被動型"
 }
 
-feature_rank_map = {row['feature']: idx for idx, row in explainer.iterrows()}
-
 def analyze_math(df):
-    identity_cols = df.columns.difference(FEATURES)
+    identity_cols = df.columns.difference(STAGE1_FEATURES_ALL)
     identity_df = df[identity_cols]
-    X = df[FEATURES]
 
-    # -------- Stage 1：所有資料先做 scaler1 --------
+    X = df.copy()
 
-    X_scaled_stage1 = stage1_scaler.transform(X.values)
-    outlier_preds = stage1.predict(X_scaled_stage1)
+    for col in STAGE1_FEATURES_ALL:
+        X[col + "_missing"] = X[col].isna().astype(int)
+    X[STAGE1_FEATURES_ALL] = X[STAGE1_FEATURES_ALL].fillna(0)
 
-    normal_groups = {c: [] for c in CLUSTER_NAME_MAP.keys()}
+    X_stage1 = X[STAGE1_FEATURES_ALL]
+    X_stage1_scaled = scaler_stage1.transform(X_stage1)
+
+    outlier_preds = model_stage1.predict(X_stage1_scaled)
+
+    normal_groups = {
+        "高投入策略型-正常": [],
+        "高投入策略型-高風險": [],
+        "低投入被動型-正常": [],
+        "低投入被動型-高風險": []
+    }
     outlier_records = []
 
-    # -------- Stage 2 & SHAP：逐筆處理 --------
+    # Stage2: 高風險用全特徵
+    X_stage2 = X[STAGE2_FEATURES_ALL].fillna(0)
+    X_stage2_scaled = scaler_stage2.transform(X_stage2)
+
+    # 只取 PCA 特徵計算群中心距離
+    n_pcs = cluster_centers.shape[1]
+    X_for_cluster = X_stage1_scaled[:, :n_pcs]
+
     for idx, is_outlier in enumerate(outlier_preds):
         student_identity = identity_df.iloc[idx].to_dict()
+
         if is_outlier == 1:
-            max_feature = explainer.iloc[0]['feature']
-            reason_feature = FEATURE_NAME_MAP[max_feature]
+            shap_vals = explainer_stage1.shap_values(X_stage1_scaled[idx:idx+1])[0]
+            shap_df = pd.DataFrame({
+                "Feature": [FEATURE_NAME_MAP.get(f, f) for f in STAGE1_FEATURES_ALL],
+                "SHAP_Value": shap_vals
+            }).sort_values(by="SHAP_Value", key=np.abs, ascending=False)
 
             record = student_identity.copy()
             record.update({
-                "status": "Outlier",
-                "biggest_influencing_factor": reason_feature
+                "status": "離群學生",
+                "SHAP_Stage1": shap_df.head(1)
             })
             outlier_records.append(record)
-
         else:
-            X_scaled_stage2 = stage2_scaler.transform(X.values[idx:idx+1])
-            cluster = int(stage2.predict(X_scaled_stage2)[0])
-            cluster_name = CLUSTER_NAME_MAP[cluster]
+            dists = np.linalg.norm(cluster_centers - X_for_cluster[idx], axis=1)
+            cluster_label = int(np.argmin(dists))
+            cluster_name = CLUSTER_NAME_MAP[cluster_label]
+
+            is_risk = model_stage2.predict(X_stage2_scaled[idx:idx+1])[0]
+            risk_prob = float(model_stage2.predict_proba(X_stage2_scaled[idx:idx+1])[0, 1])
 
             record = student_identity.copy()
             record.update({
-                "status": "Normal",
-                "cluster": cluster_name
+                "status": "正常學生",
+                "cluster": cluster_name,
+                "Risk": "高風險" if is_risk == 1 else "正常",
+                "Risk_Probability": risk_prob
             })
-            normal_groups[cluster].append(record)
 
-    normal_group_dfs = {}
-    for cluster_id, records in normal_groups.items():
-        if len(records) > 0:
-            normal_group_dfs[cluster_id] = pd.DataFrame(records)
+            if is_risk == 1:
+                shap_vals2 = explainer_stage2.shap_values(X_stage2_scaled[idx:idx+1])[0]
+                shap_df2 = pd.DataFrame({
+                    "Feature": [FEATURE_NAME_MAP.get(f, f) for f in STAGE2_FEATURES_ALL],
+                    "SHAP_Value": shap_vals2
+                }).sort_values(by="SHAP_Value", key=np.abs, ascending=False)
+                record["SHAP_Stage2"] = shap_df2.head(1)
+
+            key = f"{cluster_name}-高風險" if is_risk == 1 else f"{cluster_name}-正常"
+            normal_groups[key].append(record)
+
+    normal_group_dfs = {cid: pd.DataFrame(records) for cid, records in normal_groups.items() if records}
     outlier_df = pd.DataFrame(outlier_records)
+
     return normal_group_dfs, outlier_df
